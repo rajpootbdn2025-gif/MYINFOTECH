@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useMemo } from 'react';
-import { X, Users, Wallet, Check, Ban, DollarSign, Search, UserCheck, FileText, Upload, Download, Eye, Clock, ShieldCheck, AlertCircle, UserPlus, Trash2, Cloud, Copy, RefreshCw, Share2, Plus, Edit2, Globe, Server, Settings, PlusCircle, Layout, Bell, Monitor, Lock, Unlock, Megaphone, DollarSign as RevenueIcon, BarChart3, TrendingUp, Layers, ChevronRight, CloudUpload, CloudDownload, Terminal, Zap, ShieldQuestion } from 'lucide-react';
+import { X, Users, Wallet, Check, Ban, DollarSign, Search, UserCheck, FileText, Upload, Download, Eye, Clock, ShieldCheck, AlertCircle, UserPlus, Trash2, Cloud, Copy, RefreshCw, Share2, Plus, Edit2, Globe, Server, Settings, PlusCircle, Layout, Bell, Monitor, Lock, Unlock, Megaphone, DollarSign as RevenueIcon, BarChart3, TrendingUp, Layers, ChevronRight, CloudUpload, CloudDownload, Terminal, Zap, ShieldQuestion, Sparkles } from 'lucide-react';
 import { useAuth, AppStatus, SiteSettings } from './AuthContext';
 import { ServiceCategory, ServiceItem, FormField } from '../constants';
 
@@ -10,13 +10,14 @@ interface AdminPanelProps {
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const { 
-    allUsers, adminApproveUser, adminRejectUser, adminTransferFunds, 
+    allUsers, adminApproveUser, adminRejectUser, adminTransferFunds, adminChangePassword,
     applications, adminUpdateApplicationStatus, adminUploadCertificate,
     adminCreateUser, adminDeleteUser, services, adminAddService, adminUpdateService, adminDeleteService,
-    siteSettings, adminUpdateSettings, generateSyncLink, importSystemData, exportSystemData
+    siteSettings, adminUpdateSettings, generateSyncLink, importSystemData, exportSystemData,
+    jobPosts, addJobPost, updateJobPost, deleteJobPost, publishJobPost
   } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'agents' | 'applications' | 'services' | 'settings' | 'sync'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'agents' | 'applications' | 'services' | 'jobs' | 'settings' | 'sync'>('dashboard');
   const [transferUserId, setTransferUserId] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
   const [viewingApp, setViewingApp] = useState<any>(null);
@@ -24,6 +25,83 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [isSyncing, setIsSyncing] = useState(false);
   
   const [localSettings, setLocalSettings] = useState<SiteSettings>(siteSettings);
+
+  // Job Manager States
+  const [showJobForm, setShowJobForm] = useState(false);
+  const [editingJob, setEditingJob] = useState<any>(null);
+  const [jobTitle, setJobTitle] = useState('');
+  const [jobCategory, setJobCategory] = useState<any>('latest-job');
+  const [jobShortInfo, setJobShortInfo] = useState('');
+  const [jobContent, setJobContent] = useState('');
+  const [jobApplyLink, setJobApplyLink] = useState('');
+  const [jobPdf, setJobPdf] = useState('');
+  const [isGeneratingJob, setIsGeneratingJob] = useState(false);
+
+  const handleSaveJob = (e: React.FormEvent) => {
+    e.preventDefault();
+    const postData = {
+      title: jobTitle,
+      category: jobCategory,
+      shortInfo: jobShortInfo,
+      content: jobContent,
+      applyLink: jobApplyLink,
+      notificationPdf: jobPdf,
+      postDate: new Date().toISOString(),
+      status: editingJob ? editingJob.status : 'draft'
+    };
+
+    if (editingJob) updateJobPost(editingJob.id, postData);
+    else addJobPost(postData as any);
+
+    setShowJobForm(false);
+    resetJobForm();
+  };
+
+  const resetJobForm = () => {
+    setEditingJob(null);
+    setJobTitle('');
+    setJobCategory('latest-job');
+    setJobShortInfo('');
+    setJobContent('');
+    setJobApplyLink('');
+    setJobPdf('');
+  };
+
+  const startEditJob = (job: any) => {
+    setEditingJob(job);
+    setJobTitle(job.title);
+    setJobCategory(job.category);
+    setJobShortInfo(job.shortInfo);
+    setJobContent(job.content);
+    setJobApplyLink(job.applyLink || '');
+    setJobPdf(job.notificationPdf || '');
+    setShowJobForm(true);
+  };
+
+  const generateJobWithAI = async () => {
+    if (!jobTitle) { alert("Please enter a title first to guide the AI."); return; }
+    setIsGeneratingJob(true);
+    try {
+      const { GoogleGenAI } = await import('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Create a professional government job post in Markdown format for: "${jobTitle}". 
+        Include sections: Important Dates, Application Fee, Age Limit, Vacancy Details, and How to Apply. 
+        Also provide a short 2-sentence summary for "Short Information".
+        Format your response as JSON with keys "shortInfo" and "content".`,
+        config: { responseMimeType: 'application/json' }
+      });
+      
+      const result = JSON.parse(response.text || '{}');
+      setJobShortInfo(result.shortInfo || '');
+      setJobContent(result.content || '');
+    } catch (err) {
+      alert("AI Generation Failed. Please try again.");
+    } finally {
+      setIsGeneratingJob(false);
+    }
+  };
 
   // Dynamic Service Form States
   const [showServiceForm, setShowServiceForm] = useState(false);
@@ -164,6 +242,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   { id: 'agents', label: 'Agents', icon: <Users size={14}/> },
                   { id: 'applications', label: 'Orders', icon: <FileText size={14}/> },
                   { id: 'services', label: 'CMS', icon: <Layers size={14}/> },
+                  { id: 'jobs', label: 'Job Portal', icon: <Globe size={14}/> },
                   { id: 'settings', label: 'Site Config', icon: <Settings size={14}/> },
                   { id: 'sync', label: 'Magic Sync', icon: <RefreshCw size={14}/> }
                 ].map(tab => (
@@ -183,6 +262,144 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-slate-50">
             
+            {activeTab === 'jobs' && (
+                <div className="space-y-10 pb-20 animate-in slide-in-from-right-4 duration-500">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-3">
+                            <Globe size={16} className="text-blue-500" /> Job Portal Manager ({jobPosts.length})
+                        </h3>
+                        <button 
+                            onClick={() => { resetJobForm(); setShowJobForm(true); }}
+                            className="bg-blue-600 text-white px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg flex items-center gap-2 hover:bg-blue-700 active:scale-95 transition-all"
+                        >
+                            <PlusCircle size={18} /> Create New Job Post
+                        </button>
+                    </div>
+
+                    {showJobForm && (
+                        <div className="p-10 bg-white rounded-[3rem] border border-gray-200 animate-in slide-in-from-top-4 duration-300 shadow-2xl">
+                            <div className="flex justify-between items-center mb-8">
+                                <h4 className="text-xl font-black text-gray-900 tracking-tight">Job Post Editor</h4>
+                                <button onClick={() => setShowJobForm(false)} className="p-2 bg-gray-100 rounded-full text-gray-400 hover:text-red-500 transition-colors"><X size={20}/></button>
+                            </div>
+
+                            <form onSubmit={handleSaveJob} className="space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Post Title</label>
+                                        <input required value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder="e.g. SSC CGL 2024 Online Form" className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl font-bold outline-none shadow-sm focus:border-blue-900" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Category</label>
+                                        <select value={jobCategory} onChange={e => setJobCategory(e.target.value)} className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl font-bold outline-none shadow-sm cursor-pointer">
+                                            <option value="latest-job">Latest Job</option>
+                                            <option value="admit-card">Admit Card</option>
+                                            <option value="result">Result</option>
+                                            <option value="answer-key">Answer Key</option>
+                                            <option value="syllabus">Syllabus</option>
+                                            <option value="admission">Admission</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={generateJobWithAI}
+                                        disabled={isGeneratingJob}
+                                        className="bg-purple-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-purple-700 disabled:opacity-50 transition-all"
+                                    >
+                                        {isGeneratingJob ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                                        {isGeneratingJob ? 'Generating...' : 'AI Generate Content'}
+                                    </button>
+                                    <p className="text-[9px] text-gray-400 font-bold uppercase">Enter title first to use AI generation</p>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Short Information (2 lines)</label>
+                                    <textarea value={jobShortInfo} onChange={e => setJobShortInfo(e.target.value)} className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl font-bold outline-none shadow-sm h-20 resize-none" />
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Main Content (Markdown Supported)</label>
+                                    <textarea required value={jobContent} onChange={e => setJobContent(e.target.value)} className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl font-mono text-sm outline-none shadow-sm h-64 resize-none" />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Apply Link</label>
+                                        <input value={jobApplyLink} onChange={e => setJobApplyLink(e.target.value)} placeholder="https://..." className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl font-bold outline-none shadow-sm" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Notification PDF Link</label>
+                                        <input value={jobPdf} onChange={e => setJobPdf(e.target.value)} placeholder="https://..." className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl font-bold outline-none shadow-sm" />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4 pt-6">
+                                    <button type="submit" className="flex-1 bg-blue-900 text-white py-6 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-900/20 active:scale-95 transition-all">
+                                        Save Job Post
+                                    </button>
+                                    <button type="button" onClick={() => setShowJobForm(false)} className="px-10 py-6 bg-white text-gray-400 rounded-[2rem] font-black uppercase text-[10px] tracking-widest hover:bg-gray-100 transition-all border border-gray-100">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Drafts */}
+                        <section className="space-y-6">
+                            <h4 className="text-[10px] font-black text-orange-500 uppercase tracking-widest flex items-center gap-2"><Clock size={14}/> Draft Posts ({jobPosts.filter(p => p.status === 'draft').length})</h4>
+                            <div className="bg-white border border-gray-100 rounded-[2.5rem] overflow-hidden shadow-sm">
+                                <table className="w-full text-left">
+                                    <tbody className="divide-y divide-gray-50">
+                                        {jobPosts.filter(p => p.status === 'draft').map(post => (
+                                            <tr key={post.id} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <p className="font-black text-gray-900 text-xs leading-tight mb-1">{post.title}</p>
+                                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-orange-50 text-orange-600 rounded uppercase tracking-tighter">{post.category}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button onClick={() => publishJobPost(post.id)} className="p-2 text-green-500 hover:bg-green-50 rounded-lg" title="Publish"><Zap size={16}/></button>
+                                                        <button onClick={() => startEditJob(post)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={16}/></button>
+                                                        <button onClick={() => deleteJobPost(post.id)} className="p-2 text-red-300 hover:text-red-600"><Trash2 size={16}/></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        {/* Live */}
+                        <section className="space-y-6">
+                            <h4 className="text-[10px] font-black text-green-600 uppercase tracking-widest flex items-center gap-2"><Globe size={14}/> Live Posts ({jobPosts.filter(p => p.status === 'live').length})</h4>
+                            <div className="bg-white border border-gray-100 rounded-[2.5rem] overflow-hidden shadow-sm">
+                                <table className="w-full text-left">
+                                    <tbody className="divide-y divide-gray-50">
+                                        {jobPosts.filter(p => p.status === 'live').map(post => (
+                                            <tr key={post.id} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <p className="font-black text-gray-900 text-xs leading-tight mb-1">{post.title}</p>
+                                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-green-50 text-green-600 rounded uppercase tracking-tighter">{post.category}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button onClick={() => startEditJob(post)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={16}/></button>
+                                                        <button onClick={() => deleteJobPost(post.id)} className="p-2 text-red-300 hover:text-red-600"><Trash2 size={16}/></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            )}
             {activeTab === 'dashboard' && (
                 <div className="space-y-10 animate-in fade-in duration-500">
                     {/* Top Stats */}
@@ -319,7 +536,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                 <td className="px-8 py-5"><p className="font-black text-gray-900 leading-none mb-1">{u.name}</p><p className="text-[10px] text-gray-400 font-bold uppercase">{u.agentId}</p></td>
                                                 <td className="px-8 py-5 text-right font-black text-blue-900">₹{u.walletBalance.toLocaleString()}</td>
                                                 <td className="px-8 py-5 text-right">
-                                                    <button onClick={() => adminDeleteUser(u.id)} className="p-2 text-red-300 hover:text-red-600 transition-colors"><Trash2 size={18} /></button>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button 
+                                                            onClick={() => {
+                                                                const newPass = prompt(`Enter new password for ${u.name}:`, u.password);
+                                                                if (newPass) adminChangePassword(u.id, newPass);
+                                                            }} 
+                                                            className="p-2 text-gray-300 hover:text-blue-600 transition-colors"
+                                                            title="Change Password"
+                                                        >
+                                                            <Lock size={18} />
+                                                        </button>
+                                                        <button onClick={() => adminDeleteUser(u.id)} className="p-2 text-red-300 hover:text-red-600 transition-colors"><Trash2 size={18} /></button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}

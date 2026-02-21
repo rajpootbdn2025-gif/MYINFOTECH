@@ -8,6 +8,7 @@ import { GeminiAssistant } from './components/GeminiAssistant';
 import { AuthProvider } from './components/AuthContext';
 import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
+import { JobPortal } from './components/JobPortal';
 
 function AppContent() {
   const [showAuth, setShowAuth] = useState(false);
@@ -19,6 +20,7 @@ function AppContent() {
       <main>
         <Hero />
         <ServiceGrid onOpenAuth={() => setShowAuth(true)} />
+        <JobPortal />
         <Resources />
       </main>
       <Contact />

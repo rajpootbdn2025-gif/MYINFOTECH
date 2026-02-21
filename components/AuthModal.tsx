@@ -61,16 +61,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Registered Email</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Username or Email</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   required
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 outline-none transition-all font-medium text-sm"
-                  placeholder="name@example.com"
+                  placeholder="Username or Email"
                 />
               </div>
             </div>

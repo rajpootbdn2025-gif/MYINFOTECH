@@ -7,6 +7,20 @@ import { ref, onValue, set, update, push } from 'firebase/database';
 export type UserRole = 'admin' | 'agent';
 export type UserStatus = 'active' | 'pending' | 'rejected';
 export type AppStatus = 'pending' | 'approved' | 'rejected' | 'completed';
+export type JobCategory = 'result' | 'admit-card' | 'latest-job' | 'answer-key' | 'syllabus' | 'admission';
+
+export interface JobPost {
+  id: string;
+  title: string;
+  category: JobCategory;
+  postDate: string;
+  shortInfo: string;
+  content: string; // Markdown or HTML
+  status: 'draft' | 'live';
+  applyLink?: string;
+  officialWebsite?: string;
+  notificationPdf?: string;
+}
 
 export interface SiteSettings {
   announcement: string;
@@ -45,15 +59,21 @@ interface AuthContextType {
   user: User | null;
   allUsers: User[];
   applications: Application[];
+  jobPosts: JobPost[];
   services: ServiceItem[];
   siteSettings: SiteSettings;
-  login: (email: string, pass: string) => Promise<boolean>;
+  login: (identifier: string, pass: string) => Promise<boolean>;
   logout: () => void;
   updateWallet: (amount: number) => boolean;
   addApplication: (app: Omit<Application, 'id' | 'status' | 'timestamp'>) => void;
+  addJobPost: (post: Omit<JobPost, 'id'>) => void;
+  updateJobPost: (id: string, post: Partial<JobPost>) => void;
+  deleteJobPost: (id: string) => void;
+  publishJobPost: (id: string) => void;
   adminApproveUser: (userId: string) => void;
   adminRejectUser: (userId: string) => void;
   adminTransferFunds: (userId: string, amount: number) => void;
+  adminChangePassword: (userId: string, newPass: string) => void;
   adminUpdateApplicationStatus: (appId: string, status: AppStatus) => void;
   adminUploadCertificate: (appId: string, url: string) => void;
   adminCreateUser: (name: string, email: string, pass: string) => boolean;
@@ -94,6 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [jobPosts, setJobPosts] = useState<JobPost[]>([]);
   const [services, setServices] = useState<ServiceItem[]>(SERVICES_DATA);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
 
@@ -101,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const usersRef = ref(db, 'users');
     const appsRef = ref(db, 'applications');
+    const jobsRef = ref(db, 'jobPosts');
     const servicesRef = ref(db, 'services');
     const settingsRef = ref(db, 'settings');
 
@@ -123,6 +145,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = snapshot.val();
       if (data) setApplications(Object.values(data) as Application[]);
       else setApplications([]);
+    });
+
+    const unsubJobs = onValue(jobsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) setJobPosts(Object.values(data) as JobPost[]);
+      else setJobPosts([]);
     });
 
     const unsubServices = onValue(servicesRef, (snapshot) => {
@@ -148,6 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       unsubUsers();
       unsubApps();
+      unsubJobs();
       unsubServices();
       unsubSettings();
     };
@@ -196,9 +225,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = async (email: string, pass: string) => {
-    const cleanEmail = email.trim().toLowerCase();
-    const found = allUsers.find(u => u.email.toLowerCase() === cleanEmail && u.password === pass);
+  const login = async (identifier: string, pass: string) => {
+    const cleanId = identifier.trim().toLowerCase();
+    const found = allUsers.find(u => 
+      (u.email.toLowerCase() === cleanId || u.name.toLowerCase() === cleanId) && 
+      u.password === pass
+    );
     if (found) {
       if (found.status === 'pending') { alert("Verification Pending."); return false; }
       if (found.status === 'rejected') { alert("Access Denied."); return false; }
@@ -242,8 +274,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     set(ref(db, `applications/${appId}`), newApp);
   };
 
+  const addJobPost = (postData: Omit<JobPost, 'id'>) => {
+    const jobId = `JOB-${Date.now()}`;
+    const newJob: JobPost = { ...postData, id: jobId };
+    set(ref(db, `jobPosts/${jobId}`), newJob);
+  };
+
+  const updateJobPost = (id: string, postData: Partial<JobPost>) => {
+    update(ref(db, `jobPosts/${id}`), postData);
+  };
+
+  const deleteJobPost = (id: string) => {
+    set(ref(db, `jobPosts/${id}`), null);
+  };
+
+  const publishJobPost = (id: string) => {
+    update(ref(db, `jobPosts/${id}`), { status: 'live' });
+  };
+
   const adminApproveUser = (userId: string) => update(ref(db, `users/${userId}`), { status: 'active' });
   const adminRejectUser = (userId: string) => update(ref(db, `users/${userId}`), { status: 'rejected' });
+  const adminChangePassword = (userId: string, newPass: string) => update(ref(db, `users/${userId}`), { password: newPass });
   const adminTransferFunds = (userId: string, amount: number) => {
     const targetUser = allUsers.find(u => u.id === userId);
     if (targetUser) {
@@ -255,8 +306,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={{ 
-      user, allUsers, applications, services, siteSettings, login, logout, updateWallet, 
-      addApplication, adminApproveUser, adminRejectUser, adminTransferFunds,
+      user, allUsers, applications, jobPosts, services, siteSettings, login, logout, updateWallet, 
+      addApplication, addJobPost, updateJobPost, deleteJobPost, publishJobPost,
+      adminApproveUser, adminRejectUser, adminTransferFunds, adminChangePassword,
       adminUpdateApplicationStatus, adminUploadCertificate, adminCreateUser, adminDeleteUser,
       adminAddService, adminUpdateService, adminDeleteService, adminUpdateSettings,
       exportSystemData, importSystemData, generateSyncLink
