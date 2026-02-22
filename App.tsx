@@ -5,7 +5,7 @@ import { ServiceGrid } from './components/ServiceGrid';
 import { Resources } from './components/Resources';
 import { Contact } from './components/Contact';
 import { GeminiAssistant } from './components/GeminiAssistant';
-import { AuthProvider } from './components/AuthContext';
+import { AuthProvider, useAuth } from './components/AuthContext';
 import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
 import { JobPortal } from './components/JobPortal';
@@ -13,6 +13,16 @@ import { JobPortal } from './components/JobPortal';
 function AppContent() {
   const [showAuth, setShowAuth] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const { user } = useAuth();
+
+  // Automatically open Admin Panel if admin logs in
+  React.useEffect(() => {
+    if (user?.role === 'admin') {
+      setShowAdmin(true);
+    } else {
+      setShowAdmin(false);
+    }
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-slate-50 relative">

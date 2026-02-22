@@ -8,7 +8,7 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('admin@sandhya.com');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -18,22 +18,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
     setLoading(true);
     try {
         const success = await login(email, password);
-        if (success) onClose();
-        else alert("Login Failed: Please check your credentials or wait for admin approval.");
+        if (success) {
+            onClose();
+        } else {
+            alert("Login Failed: Please check your credentials.");
+        }
     } catch (err) {
       alert("An unexpected error occurred. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdminQuickLogin = async () => {
-    setLoading(true);
-    try {
-        const success = await login('admin@sandhya.com', 'admin');
-        if (success) onClose();
-    } catch (err) {
-      alert("Admin Login Failed.");
     } finally {
       setLoading(false);
     }
@@ -60,31 +51,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Username or Email</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  required
-                  type="text"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 outline-none transition-all font-medium text-sm"
-                  placeholder="Username or Email"
-                />
-              </div>
-            </div>
+            <input type="hidden" value={email} />
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">System Password</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Enter System Password</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   required
+                  autoFocus
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 outline-none transition-all font-medium text-sm"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-sm"
                   placeholder="••••••••"
                 />
               </div>
@@ -93,22 +72,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/20 active:scale-95 disabled:opacity-50 mt-2"
+              className="w-full bg-blue-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 hover:bg-blue-800 transition-all shadow-xl shadow-blue-900/20 active:scale-95 disabled:opacity-50 mt-4"
             >
-              {loading ? 'Authenticating...' : 'Sign In as Agent'}
-              <ArrowRight size={16} />
+              {loading ? 'Verifying...' : 'Access Portal Now'}
+              <ArrowRight size={18} />
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-gray-100">
-            <button 
-                onClick={handleAdminQuickLogin}
-                className="w-full bg-blue-900/5 hover:bg-blue-900/10 text-blue-900 border border-blue-900/20 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 transition-all active:scale-95"
-            >
-                <Terminal size={18} /> Enter as Master Admin
-            </button>
-            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest text-center mt-4">
-               Authorized master credentials will be pre-filled
+          <div className="mt-8 pt-6 border-t border-gray-100 text-center">
+            <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
+               Secure Access Terminal
             </p>
           </div>
         </div>

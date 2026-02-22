@@ -12,9 +12,12 @@ export const JobPortal: React.FC = () => {
   const livePosts = jobPosts.filter(p => p.status === 'live');
 
   const categories: { id: JobCategory; label: string; color: string }[] = [
-    { id: 'result', label: 'Latest Results', color: 'bg-red-600' },
-    { id: 'admit-card', label: 'Admit Cards', color: 'bg-blue-600' },
     { id: 'latest-job', label: 'Latest Jobs', color: 'bg-green-600' },
+    { id: 'admit-card', label: 'Admit Cards', color: 'bg-blue-600' },
+    { id: 'result', label: 'Latest Results', color: 'bg-red-600' },
+    { id: 'answer-key', label: 'Answer Key', color: 'bg-orange-600' },
+    { id: 'syllabus', label: 'Syllabus', color: 'bg-purple-600' },
+    { id: 'admission', label: 'Admission', color: 'bg-indigo-600' },
   ];
 
   const filteredPosts = (cat: JobCategory) => {
@@ -43,7 +46,7 @@ export const JobPortal: React.FC = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {categories.map(cat => (
             <div key={cat.id} className="bg-white rounded-[2rem] shadow-xl overflow-hidden border border-gray-100 flex flex-col h-[600px]">
               <div className={`${cat.color} p-6 text-white`}>
@@ -59,9 +62,14 @@ export const JobPortal: React.FC = () => {
                     className="w-full text-left p-4 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200 group flex items-start gap-3"
                   >
                     <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></div>
-                    <div>
+                    <div className="flex-1">
                       <p className="font-bold text-gray-800 text-sm leading-tight group-hover:text-blue-600 transition-colors">{post.title}</p>
-                      <p className="text-[10px] text-gray-400 font-black uppercase mt-1">{new Date(post.postDate).toLocaleDateString()}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-[10px] text-gray-400 font-black uppercase">{new Date(post.postDate).toLocaleDateString()}</p>
+                        {post.applyLink && (
+                          <span className="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-lg uppercase tracking-wider group-hover:bg-blue-600 group-hover:text-white transition-all">Apply Now</span>
+                        )}
+                      </div>
                     </div>
                   </button>
                 ))}

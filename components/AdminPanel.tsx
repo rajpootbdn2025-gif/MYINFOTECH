@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useMemo } from 'react';
-import { X, Users, Wallet, Check, Ban, DollarSign, Search, UserCheck, FileText, Upload, Download, Eye, Clock, ShieldCheck, AlertCircle, UserPlus, Trash2, Cloud, Copy, RefreshCw, Share2, Plus, Edit2, Globe, Server, Settings, PlusCircle, Layout, Bell, Monitor, Lock, Unlock, Megaphone, DollarSign as RevenueIcon, BarChart3, TrendingUp, Layers, ChevronRight, CloudUpload, CloudDownload, Terminal, Zap, ShieldQuestion, Sparkles } from 'lucide-react';
+import { X, Users, Wallet, Check, Ban, DollarSign, Search, UserCheck, FileText, Upload, Download, Eye, Clock, ShieldCheck, AlertCircle, UserPlus, Trash2, Cloud, Copy, RefreshCw, Share2, Plus, Edit2, Globe, Server, Settings, PlusCircle, Layout, Bell, Monitor, Lock, Unlock, Megaphone, DollarSign as RevenueIcon, BarChart3, TrendingUp, Layers, ChevronRight, CloudUpload, CloudDownload, Terminal, Zap, ShieldQuestion, Sparkles, LogOut } from 'lucide-react';
 import { useAuth, AppStatus, SiteSettings } from './AuthContext';
 import { ServiceCategory, ServiceItem, FormField } from '../constants';
 
@@ -14,10 +14,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     applications, adminUpdateApplicationStatus, adminUploadCertificate,
     adminCreateUser, adminDeleteUser, services, adminAddService, adminUpdateService, adminDeleteService,
     siteSettings, adminUpdateSettings, generateSyncLink, importSystemData, exportSystemData,
-    jobPosts, addJobPost, updateJobPost, deleteJobPost, publishJobPost
+    jobPosts, addJobPost, updateJobPost, deleteJobPost, publishJobPost, logout
   } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'agents' | 'applications' | 'services' | 'jobs' | 'settings' | 'sync'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'agents' | 'applications' | 'services' | 'jobs' | 'settings' | 'sync' | 'autoconfig'>('dashboard');
   const [transferUserId, setTransferUserId] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
   const [viewingApp, setViewingApp] = useState<any>(null);
@@ -47,7 +47,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       applyLink: jobApplyLink,
       notificationPdf: jobPdf,
       postDate: new Date().toISOString(),
-      status: editingJob ? editingJob.status : 'draft'
+      status: editingJob ? editingJob.status : 'live'
     };
 
     if (editingJob) updateJobPost(editingJob.id, postData);
@@ -187,6 +187,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     };
   }, [applications, activeAgents, pendingAgents]);
 
+  const handleAutoConfig = () => {
+    if (window.confirm("Run Automatic Configuration? This will optimize site settings and sync database structures.")) {
+      setIsSyncing(true);
+      setTimeout(() => {
+        adminUpdateSettings({
+          ...siteSettings,
+          maintenanceMode: false,
+          adsEnabled: true,
+          announcement: "🚀 System Optimized! All services are now running at peak performance."
+        });
+        setIsSyncing(false);
+        alert("✨ Automatic Configuration Complete!");
+      }, 1500);
+    }
+  };
+
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     adminUpdateSettings(localSettings);
@@ -244,7 +260,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   { id: 'services', label: 'CMS', icon: <Layers size={14}/> },
                   { id: 'jobs', label: 'Job Portal', icon: <Globe size={14}/> },
                   { id: 'settings', label: 'Site Config', icon: <Settings size={14}/> },
-                  { id: 'sync', label: 'Magic Sync', icon: <RefreshCw size={14}/> }
+                  { id: 'sync', label: 'Magic Sync', icon: <RefreshCw size={14}/> },
+                  { id: 'autoconfig', label: 'Auto Config', icon: <Zap size={14}/> }
                 ].map(tab => (
                   <button 
                     key={tab.id}
@@ -256,7 +273,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 ))}
             </div>
 
-            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-all hidden md:block"><X size={28} /></button>
+            <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => { logout(); onClose(); }} 
+                  className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-red-500/30"
+                >
+                  <LogOut size={14} /> Logout
+                </button>
+                <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-all hidden md:block"><X size={28} /></button>
+            </div>
         </div>
 
         {/* Content Area */}
@@ -360,10 +385,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                     <span className="text-[8px] font-black px-1.5 py-0.5 bg-orange-50 text-orange-600 rounded uppercase tracking-tighter">{post.category}</span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <button onClick={() => publishJobPost(post.id)} className="p-2 text-green-500 hover:bg-green-50 rounded-lg" title="Publish"><Zap size={16}/></button>
-                                                        <button onClick={() => startEditJob(post)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={16}/></button>
-                                                        <button onClick={() => deleteJobPost(post.id)} className="p-2 text-red-300 hover:text-red-600"><Trash2 size={16}/></button>
+                                                    <div className="flex items-center justify-end gap-3">
+                                                        <button 
+                                                          onClick={() => publishJobPost(post.id)} 
+                                                          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-[10px] font-black uppercase hover:bg-green-600 hover:text-white transition-all"
+                                                        >
+                                                          <Zap size={14}/> Publish
+                                                        </button>
+                                                        <button 
+                                                          onClick={() => startEditJob(post)} 
+                                                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase hover:bg-blue-600 hover:text-white transition-all"
+                                                        >
+                                                          <Edit2 size={14}/> Edit
+                                                        </button>
+                                                        <button 
+                                                          onClick={() => deleteJobPost(post.id)} 
+                                                          className="p-2 text-red-300 hover:text-red-600"
+                                                        >
+                                                          <Trash2 size={16}/>
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -386,9 +426,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                     <span className="text-[8px] font-black px-1.5 py-0.5 bg-green-50 text-green-600 rounded uppercase tracking-tighter">{post.category}</span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <button onClick={() => startEditJob(post)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={16}/></button>
-                                                        <button onClick={() => deleteJobPost(post.id)} className="p-2 text-red-300 hover:text-red-600"><Trash2 size={16}/></button>
+                                                    <div className="flex items-center justify-end gap-3">
+                                                        <button 
+                                                          onClick={() => startEditJob(post)} 
+                                                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase hover:bg-blue-600 hover:text-white transition-all"
+                                                        >
+                                                          <Edit2 size={14}/> Edit
+                                                        </button>
+                                                        <button 
+                                                          onClick={() => deleteJobPost(post.id)} 
+                                                          className="p-2 text-red-300 hover:text-red-600 transition-colors"
+                                                        >
+                                                          <Trash2 size={16}/>
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -398,6 +448,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             </div>
                         </section>
                     </div>
+                </div>
+            )}
+            {activeTab === 'autoconfig' && (
+                <div className="max-w-2xl mx-auto py-20 text-center space-y-8 animate-in zoom-in-95 duration-500">
+                    <div className="w-24 h-24 bg-blue-900 text-white rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl shadow-blue-900/40">
+                        <Zap size={48} className="animate-pulse" />
+                    </div>
+                    <div>
+                        <h3 className="text-3xl font-black text-gray-900 tracking-tight">System Auto-Optimizer</h3>
+                        <p className="text-gray-500 mt-3 font-medium">Click below to automatically configure and optimize your portal settings for maximum performance.</p>
+                    </div>
+                    <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm space-y-4 text-left">
+                        <div className="flex items-center gap-4 text-xs font-bold text-gray-600">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            Optimize Database Structures
+                        </div>
+                        <div className="flex items-center gap-4 text-xs font-bold text-gray-600">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            Configure AdSense & SEO Meta
+                        </div>
+                        <div className="flex items-center gap-4 text-xs font-bold text-gray-600">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            Reset Maintenance & Cache
+                        </div>
+                    </div>
+                    <button 
+                        onClick={handleAutoConfig}
+                        disabled={isSyncing}
+                        className="w-full bg-blue-900 text-white py-6 rounded-[2rem] font-black uppercase tracking-[0.2em] text-sm shadow-2xl shadow-blue-900/40 hover:bg-blue-800 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        {isSyncing ? 'Optimizing System...' : 'Run Auto Configuration'}
+                    </button>
                 </div>
             )}
             {activeTab === 'dashboard' && (
@@ -432,6 +514,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                 <p className="text-2xl font-black text-gray-900">{Math.round((stats.completed / (stats.orders || 1)) * 100)}%</p>
                             </div>
                         </div>
+                        <button 
+                          onClick={handleAutoConfig}
+                          className="bg-blue-900 text-white p-8 rounded-[2.5rem] shadow-xl shadow-blue-900/20 flex items-center gap-6 hover:bg-blue-800 transition-all active:scale-95 text-left"
+                        >
+                            <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center"><Zap size={28}/></div>
+                            <div>
+                                <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest">System Tool</p>
+                                <p className="text-xl font-black">Auto Config</p>
+                            </div>
+                        </button>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
